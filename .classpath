@@ -32,5 +32,6 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry kind="lib" path="E:/Google Drive/Mestrado Computação/00 - Dissertação/lemport-0.9.9.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
