@@ -7,6 +7,7 @@
 	<version>0.0.1-SNAPSHOT</version>
 	<name>textO</name>
 	<description>A Ontology Based set of text processing tools.</description>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.opennlp</groupId>
@@ -38,8 +39,6 @@
 			<artifactId>neo4j-java-driver</artifactId>
 			<version>1.6.3</version>
 		</dependency>
-
-
 	</dependencies>
 	<build>
 		<pluginManagement>
@@ -54,5 +53,14 @@
 				</plugin>
 			</plugins>
 		</pluginManagement>
+		<resources>
+			<resource>
+				<directory>${project.basedir}</directory>
+				<includes>
+					<include>NLPModels</include>
+				</includes>
+			</resource>
+		</resources>
 	</build>
+
 </project>
