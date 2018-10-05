@@ -20,10 +20,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.collections4.Bag;
 import org.xml.sax.SAXException;
+
+import com.google.common.collect.Multiset;
 
 import dev.tfduque.textO.textTools.DatabaseConnection;
 import dictionary.DictionaryLoadException;
@@ -58,42 +62,40 @@ public class LemmatizedRelations {
 			TreeMap<String, Integer> mappedRelations = new TreeMap<String, Integer>();
 			Set<String> allTerms = new HashSet<String>();
 			int minimum, mean;
-			
+
 			Lemmatizer lemmat = new Lemmatizer();
 
 			//
 			InputStream is = new FileInputStream(
-					"/home/tiago_duque/Área de Trabalho/eclipse/textOtools/src/main/resources/pt-sent.bin");
+					"C:\\Users\\Tiago Duque\\git\\textOtools\\src\\main\\resources\\pt-sent.bin");
 			SentenceModel modelSent = new SentenceModel(is);
 			SentenceDetectorME detector = new SentenceDetectorME(modelSent);
 
 			//
 
 			InputStream isl = new FileInputStream(
-					"/home/tiago_duque/Área de Trabalho/eclipse/textOtools/src/main/resources/pt-token.bin");
+					"C:\\Users\\Tiago Duque\\git\\textOtools\\src\\main\\resources\\pt-token.bin");
 			TokenizerModel tokenModel = new TokenizerModel(isl);
 			Tokenizer tokenizer = new TokenizerME(tokenModel);
 
 			//
 
 			InputStream inputStream = new FileInputStream(
-					"/home/tiago_duque/Área de Trabalho/eclipse/textOtools/src/main/resources/pt-pos-maxent.bin");
+					"C:\\Users\\Tiago Duque\\git\\textOtools\\src\\main\\resources\\pt-pos-maxent.bin");
 			POSModel model = new POSModel(inputStream);
 			POSTaggerME tagger = new POSTaggerME(model);
 
 			//
-			
+
 			String[] tokens, tags;
 			Span[] spans;
-			
-			
-			
+
 			// For time counting
 			Long time = System.currentTimeMillis();
 			// Collects all terms;
 			termstmt = connection.prepareStatement("Select term_name from lemmatizedTerms");
 			termResults = termstmt.executeQuery();
-			
+
 			while (termResults.next()) {
 				allTerms.add(termResults.getString(1));
 			}
@@ -103,7 +105,7 @@ public class LemmatizedRelations {
 				mappedRelations.clear();
 				System.gc();
 				quinhentasConnection = DatabaseConnection.getQuinhentasPerguntasConnection();
-				for (int currentDataPos = 1; currentDataPos <= 500; currentDataPos++) {
+				for (int currentDataPos = 1; currentDataPos <= 5; currentDataPos++) {
 					questionstmt = quinhentasConnection.prepareStatement("select texto from pergunta where id = ?");
 					questionstmt.setInt(1, currentDataPos);
 					questionResult = questionstmt.executeQuery();
@@ -118,7 +120,8 @@ public class LemmatizedRelations {
 					listOfspans.clear();
 					listOfspans.addAll(Arrays.asList(spans));
 					for (Span span : listOfspans) {
-						tokens = tokenizer.tokenize(currentData.substring(span.getStart(), span.getEnd()));
+						String currentSent = currentData.substring(span.getStart(), span.getEnd());
+						tokens = tokenizer.tokenize(currentSent);
 						tags = tagger.tag(tokens);
 						listOfTags.clear();
 						listOfTags.addAll(Arrays.asList(tokens));
@@ -127,24 +130,16 @@ public class LemmatizedRelations {
 							for (int i = 0; i < tokens.length; i++) {
 								String currentTerm = tokens[i];
 								String currentPOS = tags[i];
-								if (currentTerm.equals(mainTerm) || !allTerms.contains(lemmat.lemmatize(currentTerm,currentPOS)))
+								if (currentTerm.equals(mainTerm)
+										|| !allTerms.contains(lemmat.lemmatize(currentTerm, currentPOS)))
 									continue;
-								mean = 0;
-								relationPos = indexOfAll(currentTerm, listOfTags);
-								int occurrences = relationPos.size();
-								if (occurrences == 0)
-									continue;
-								for (Integer pos : relationPos) {
-									minimum = (int) Double.POSITIVE_INFINITY;
-									for (Integer termPos : mainTermPos) {
-										if (Math.abs(termPos - pos) < minimum) {
-											minimum = Math.abs(termPos - pos);
-										}
-									}
-									mean += minimum;
-									occurrences++;
+								String lemma = lemmat.lemmatize(currentTerm, currentPOS);
+								if(mappedRelations.containsKey(lemma)) {
+									mappedRelations.put(lemma, mappedRelations.get(lemma)+1);
+								}else {
+									mappedRelations.put(lemma, 1);
 								}
-								mappedRelations.put(lemmat.lemmatize(currentTerm,currentPOS), occurrences);
+								
 
 							}
 						}
