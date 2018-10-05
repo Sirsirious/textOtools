@@ -127,7 +127,7 @@ public class LemmatizerEntryPoint {
 			for (String filteredTerm : filteredTerms) {
 				StringBuffer termLine = new StringBuffer();
 				termLine.append(filteredTerm);
-				termLine.append(CSV_Separator);
+				//termLine.append(CSV_Separator);
 				bw.write(termLine.toString());
 				bw.newLine();
 			}
