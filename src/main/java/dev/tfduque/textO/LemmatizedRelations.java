@@ -20,14 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.commons.collections4.Bag;
 import org.xml.sax.SAXException;
-
-import com.google.common.collect.Multiset;
 
 import dev.tfduque.textO.textTools.DatabaseConnection;
 import dictionary.DictionaryLoadException;
@@ -51,43 +47,39 @@ public class LemmatizedRelations {
 		PreparedStatement termstmt, questionstmt, answerstmt;
 		String currentData;
 		ResultSet termResults, questionResult, answerResult;
-		long maxBytes = Runtime.getRuntime().maxMemory();
 		try {
 			PrintWriter pw = new PrintWriter("LemmatizedRelations.csv");
 			StringBuffer sb = new StringBuffer();
-			ArrayList<String> listOfTags = new ArrayList<String>();
 			ArrayList<Integer> mainTermPos;
-			ArrayList<Integer> relationPos;
 			ArrayList<Span> listOfspans = new ArrayList<Span>();
 			TreeMap<String, Integer> mappedRelations = new TreeMap<String, Integer>();
 			Set<String> allTerms = new HashSet<String>();
-			int minimum, mean;
 
 			Lemmatizer lemmat = new Lemmatizer();
 
 			//
 			InputStream is = new FileInputStream(
-					"C:\\Users\\Tiago Duque\\git\\textOtools\\src\\main\\resources\\pt-sent.bin");
+					"/home/tiago_duque/Área de Trabalho/eclipse/textOtools/src/main/resources/pt-sent.bin");
 			SentenceModel modelSent = new SentenceModel(is);
 			SentenceDetectorME detector = new SentenceDetectorME(modelSent);
 
 			//
 
 			InputStream isl = new FileInputStream(
-					"C:\\Users\\Tiago Duque\\git\\textOtools\\src\\main\\resources\\pt-token.bin");
+					"/home/tiago_duque/Área de Trabalho/eclipse/textOtools/src/main/resources/pt-token.bin");
 			TokenizerModel tokenModel = new TokenizerModel(isl);
 			Tokenizer tokenizer = new TokenizerME(tokenModel);
 
 			//
 
 			InputStream inputStream = new FileInputStream(
-					"C:\\Users\\Tiago Duque\\git\\textOtools\\src\\main\\resources\\pt-pos-maxent.bin");
+					"/home/tiago_duque/Área de Trabalho/eclipse/textOtools/src/main/resources/pt-pos-maxent.bin");
 			POSModel model = new POSModel(inputStream);
 			POSTaggerME tagger = new POSTaggerME(model);
 
 			//
 
-			String[] tokens, tags;
+			String[] tokens, tags, lemmatizedTerms;
 			Span[] spans;
 
 			// For time counting
@@ -101,11 +93,15 @@ public class LemmatizedRelations {
 			}
 			connection.close();
 			for (String mainTerm : allTerms) {
+				Set<String> lemmas = new HashSet<String>();
+				lemmas.add(lemmat.lemmatize(mainTerm, "N"));
+				lemmas.add(lemmat.lemmatize(mainTerm, "V"));
+				lemmas.add(lemmat.lemmatize(mainTerm, "ADJ"));
 
 				mappedRelations.clear();
 				System.gc();
 				quinhentasConnection = DatabaseConnection.getQuinhentasPerguntasConnection();
-				for (int currentDataPos = 1; currentDataPos <= 5; currentDataPos++) {
+				for (int currentDataPos = 1; currentDataPos <= 500; currentDataPos++) {
 					questionstmt = quinhentasConnection.prepareStatement("select texto from pergunta where id = ?");
 					questionstmt.setInt(1, currentDataPos);
 					questionResult = questionstmt.executeQuery();
@@ -123,23 +119,22 @@ public class LemmatizedRelations {
 						String currentSent = currentData.substring(span.getStart(), span.getEnd());
 						tokens = tokenizer.tokenize(currentSent);
 						tags = tagger.tag(tokens);
-						listOfTags.clear();
-						listOfTags.addAll(Arrays.asList(tokens));
-						mainTermPos = indexOfAll(mainTerm, listOfTags);
+						lemmatizedTerms = new String[tokens.length];
+						for (int k = 0; k < tokens.length; k++) {
+							lemmatizedTerms[k] = lemmat.lemmatize(tokens[k], tags[k]);
+						}
+						mainTermPos = indexOfAll(lemmas, lemmatizedTerms);
 						if (!mainTermPos.isEmpty()) {
-							for (int i = 0; i < tokens.length; i++) {
-								String currentTerm = tokens[i];
-								String currentPOS = tags[i];
-								if (currentTerm.equals(mainTerm)
-										|| !allTerms.contains(lemmat.lemmatize(currentTerm, currentPOS)))
+							for (int i = 0; i < lemmatizedTerms.length; i++) {
+								if (lemmatizedTerms[i].equals(mainTerm)
+										|| !allTerms.contains(lemmatizedTerms[i]))
 									continue;
-								String lemma = lemmat.lemmatize(currentTerm, currentPOS);
-								if(mappedRelations.containsKey(lemma)) {
-									mappedRelations.put(lemma, mappedRelations.get(lemma)+1);
-								}else {
-									mappedRelations.put(lemma, 1);
-								}
 								
+								if (mappedRelations.containsKey(lemmatizedTerms[i])) {
+									mappedRelations.put(lemmatizedTerms[i], mappedRelations.get(lemmatizedTerms[i]) + 1);
+								} else {
+									mappedRelations.put(lemmatizedTerms[i], 1);
+								}
 
 							}
 						}
@@ -150,7 +145,7 @@ public class LemmatizedRelations {
 				quinhentasConnection.close();
 				if (!mappedRelations.isEmpty()) {
 					sb.append(mainTerm);
-					for (Map.Entry<String, Integer> entry : sortByValue(mappedRelations).entrySet()) {
+					for (Map.Entry<String, Integer> entry : mappedRelations.entrySet()) {
 						sb.append(", " + entry.getKey() + "[" + entry.getValue() + "]");
 					}
 					sb.append("\n");
@@ -186,10 +181,10 @@ public class LemmatizedRelations {
 		}
 	}
 
-	static ArrayList<Integer> indexOfAll(Object obj, ArrayList list) {
+	static ArrayList<Integer> indexOfAll(Set<String> lemmas, String[] lemmatizedTerms) {
 		ArrayList<Integer> indexList = new ArrayList<Integer>();
-		for (int i = 0; i < list.size(); i++)
-			if (obj.equals(list.get(i)))
+		for (int i = 0; i < lemmatizedTerms.length; i++)
+			if (lemmas.contains(lemmatizedTerms[i]))
 				indexList.add(i);
 		return indexList;
 	}
