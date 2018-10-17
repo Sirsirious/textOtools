@@ -39,7 +39,6 @@
 			<artifactId>neo4j-java-driver</artifactId>
 			<version>1.6.3</version>
 		</dependency>
-		<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
